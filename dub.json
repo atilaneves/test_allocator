@@ -1,0 +1,10 @@
+{
+    "name": "test_allocator",
+    "authors": [
+        "Atila Neves"
+    ],
+    "description": "A test allocator",
+    "copyright": "Copyright © 2016, Atila Neves",
+    "license": "BSD",
+    "targetType": "sourceLibrary"
+}
