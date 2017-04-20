@@ -12,6 +12,9 @@ struct TestAllocator {
     private static struct ByteRange {
         void* ptr;
         size_t length;
+        inout(void)[] opSlice() @trusted @nogc inout nothrow {
+            return ptr[0 .. length];
+        }
     }
 
     private ByteRange[] _allocations;
@@ -57,6 +60,13 @@ struct TestAllocator {
         }
         _allocations = _allocations.remove!pred;
         return () @trusted { return allocator.deallocate(bytes); }();
+    }
+
+    bool deallocateAll() @safe @nogc nothrow {
+        foreach(ref allocation; _allocations) {
+            deallocate(allocation[]);
+        }
+        return true;
     }
 
     auto numAllocations() @safe @nogc pure nothrow const {
