@@ -1,5 +1,6 @@
 module test_allocator;
 
+
 // tracks allocations and throws in the destructor if there is a memory leak
 // it also throws when there is an attempt to deallocate memory that wasn't
 // allocated
@@ -58,7 +59,9 @@ struct TestAllocator {
             index = printAllocations(buffer, index);
             assert(false, buffer[0 .. index]);
         }
+
         _allocations = _allocations.remove!pred;
+
         return () @trusted { return allocator.deallocate(bytes); }();
     }
 
@@ -73,7 +76,11 @@ struct TestAllocator {
         return _numAllocations;
     }
 
-    ~this() @trusted @nogc nothrow {
+    ~this() @safe @nogc nothrow {
+        verify;
+    }
+
+    void verify() @trusted @nogc nothrow {
 
         static char[1024] buffer;
 
