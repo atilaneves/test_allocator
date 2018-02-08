@@ -23,16 +23,13 @@ struct TestAllocator {
 
     enum uint alignment = platformAlignment;
 
-    void[] allocate(size_t numBytes) @safe @nogc {
+    void[] allocate(size_t numBytes) @safe @nogc nothrow {
         import std.experimental.allocator: makeArray, expandArray;
-
-        static const exception = new Exception("Allocation failed");
 
         ++_numAllocations;
 
         auto ret = allocator.allocate(numBytes);
-        if(numBytes > 0 && ret.length == 0)
-            throw exception;
+        if(ret.length == 0) return ret;
 
         auto newEntry = ByteRange(&ret[0], ret.length);
 
