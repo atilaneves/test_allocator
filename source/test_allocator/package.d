@@ -41,16 +41,16 @@ struct TestAllocator {
         return ret;
     }
 
-    bool deallocate(void[] bytes) @trusted @nogc nothrow {
+    bool deallocate(void[] bytes) @trusted @nogc nothrow pure {
         import std.algorithm: remove, canFind;
         import core.stdc.stdio: sprintf;
 
         bool pred(ByteRange other) { return other.ptr == bytes.ptr && other.length == bytes.length; }
 
-        static char[1024] buffer;
+        char[1024] buffer;
 
         if(!_allocations.canFind!pred) {
-            auto index = sprintf(&buffer[0],
+            auto index = pureSprintf(&buffer[0],
                                  "Unknown deallocate byte range. Ptr: %p, length: %ld, allocations:\n",
                                  &bytes[0], bytes.length);
             index = printAllocations(buffer, index);
@@ -73,31 +73,75 @@ struct TestAllocator {
         return _numAllocations;
     }
 
-    ~this() @safe @nogc nothrow {
+    ~this() @safe @nogc nothrow pure {
         verify;
     }
 
-    void verify() @trusted @nogc nothrow {
+    void verify() @trusted @nogc nothrow pure {
 
-        static char[1024] buffer;
+        char[1024] buffer;
 
         if(_allocations.length) {
             import core.stdc.stdio: sprintf;
-            auto index = sprintf(&buffer[0], "Memory leak in TestAllocator. Allocations:\n");
+            auto index = pureSprintf(&buffer[0], "Memory leak in TestAllocator. Allocations:\n");
             index = printAllocations(buffer, index);
             assert(false, buffer[0 .. index]);
         }
     }
 
+    pure
     int printAllocations(int N)(ref char[N] buffer, int index = 0) @trusted @nogc const nothrow {
         import core.stdc.stdio: sprintf;
-        index += sprintf(&buffer[index], "[");
+        index += pureSprintf(&buffer[index], "[");
         foreach(ref allocation; _allocations) {
-            index += sprintf(&buffer[index], "ByteRange(%p, %ld), ",
+            index += pureSprintf(&buffer[index], "ByteRange(%p, %ld), ",
                              allocation.ptr, allocation.length);
         }
 
-        index += sprintf(&buffer[index], "]");
+        index += pureSprintf(&buffer[index], "]");
         return index;
     }
+}
+
+/* Private bits that allow sprintf to become pure */
+private int pureSprintf(A...)(scope char* s, scope const(char*) format, A va) @trusted pure @nogc nothrow
+{
+    const errnosave = fakePureErrno();
+    int ret = fakePureSprintf(s, format, va);
+    fakePureErrno() = errnosave;
+    return ret;
+}
+
+extern (C) private @system @nogc nothrow
+{
+    ref int fakePureErrnoImpl()
+    {
+        import core.stdc.errno;
+        return errno();
+    }
+}
+
+extern (C) private pure @system @nogc nothrow
+{
+    pragma(mangle, "fakePureErrnoImpl") ref int fakePureErrno();
+    pragma(mangle, "sprintf") int fakePureSprintf(scope char* s, scope const(char*) format, ...);
+}
+
+unittest
+{
+    import std.experimental.allocator : allocatorObject;
+    import std.experimental.allocator.building_blocks.stats_collector;
+    import std.experimental.allocator.mallocator: Mallocator;
+    import std.conv : to;
+
+    alias SCAlloc = StatsCollector!(TestAllocator, Options.bytesUsed);
+
+    SCAlloc statsCollectorAlloc;
+    {
+        auto _allocator = allocatorObject(&statsCollectorAlloc);
+        auto buf = _allocator.allocate(10);
+        _allocator.deallocate(buf);
+    }
+    auto bytesUsed = statsCollectorAlloc.bytesUsed;
+    assert(bytesUsed == 0, "Ref count leaks memory; leaked " ~ to!string(bytesUsed) ~ " bytes");
 }
