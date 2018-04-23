@@ -1,12 +1,11 @@
 module test_allocator;
 
-
 // tracks allocations and throws in the destructor if there is a memory leak
 // it also throws when there is an attempt to deallocate memory that wasn't
 // allocated
 struct TestAllocator {
-    import std.experimental.allocator.common: platformAlignment;
-    import std.experimental.allocator.mallocator: Mallocator;
+    import stdx.allocator.common: platformAlignment;
+    import stdx.allocator.mallocator: Mallocator;
 
     alias allocator = Mallocator.instance;
 
@@ -24,7 +23,7 @@ struct TestAllocator {
     enum uint alignment = platformAlignment;
 
     void[] allocate(size_t numBytes) @safe @nogc nothrow {
-        import std.experimental.allocator: makeArray, expandArray;
+        import stdx.allocator: makeArray, expandArray;
 
         ++_numAllocations;
 
@@ -41,9 +40,13 @@ struct TestAllocator {
         return ret;
     }
 
-    bool deallocate(void[] bytes) @trusted @nogc nothrow pure {
+    bool deallocate(void[] bytes) @trusted @nogc nothrow {
         import std.algorithm: remove, canFind;
-        import core.stdc.stdio: sprintf;
+        static if (__VERSION__ < 2077)
+        {
+            import core.stdc.stdio: sprintf;
+            alias pureSprintf = sprintf;
+        }
 
         bool pred(ByteRange other) { return other.ptr == bytes.ptr && other.length == bytes.length; }
 
@@ -73,25 +76,32 @@ struct TestAllocator {
         return _numAllocations;
     }
 
-    ~this() @safe @nogc nothrow pure {
+    ~this() @safe @nogc nothrow {
         verify;
     }
 
-    void verify() @trusted @nogc nothrow pure {
+    void verify() @trusted @nogc nothrow {
+        static if (__VERSION__ < 2077)
+        {
+            import core.stdc.stdio: sprintf;
+            alias pureSprintf = sprintf;
+        }
 
         char[1024] buffer;
 
         if(_allocations.length) {
-            import core.stdc.stdio: sprintf;
             auto index = pureSprintf(&buffer[0], "Memory leak in TestAllocator. Allocations:\n");
             index = printAllocations(buffer, index);
             assert(false, buffer[0 .. index]);
         }
     }
 
-    pure
     int printAllocations(int N)(ref char[N] buffer, int index = 0) @trusted @nogc const nothrow {
-        import core.stdc.stdio: sprintf;
+        static if (__VERSION__ < 2077)
+        {
+            import core.stdc.stdio: sprintf;
+            alias pureSprintf = sprintf;
+        }
         index += pureSprintf(&buffer[index], "[");
         foreach(ref allocation; _allocations) {
             index += pureSprintf(&buffer[index], "ByteRange(%p, %ld), ",
@@ -103,45 +113,44 @@ struct TestAllocator {
     }
 }
 
-/* Private bits that allow sprintf to become pure */
-private int pureSprintf(A...)(scope char* s, scope const(char*) format, A va) @trusted pure @nogc nothrow
+static if (__VERSION__ >= 2077)
 {
-    const errnosave = fakePureErrno();
-    int ret = fakePureSprintf(s, format, va);
-    fakePureErrno() = errnosave;
-    return ret;
-}
-
-extern (C) private @system @nogc nothrow
-{
-    ref int fakePureErrnoImpl()
+    /* Private bits that allow sprintf to become pure */
+    private int pureSprintf(A...)(scope char* s, scope const(char*) format, A va) @trusted pure @nogc nothrow
     {
-        import core.stdc.errno;
-        return errno();
+        const errnosave = fakePureErrno();
+        int ret = fakePureSprintf(s, format, va);
+        fakePureErrno() = errnosave;
+        return ret;
     }
-}
 
-extern (C) private pure @system @nogc nothrow
-{
-    pragma(mangle, "fakePureErrnoImpl") ref int fakePureErrno();
-    pragma(mangle, "sprintf") int fakePureSprintf(scope char* s, scope const(char*) format, ...);
+    extern (C) private @system @nogc nothrow
+    {
+        ref int fakePureErrnoImpl()
+        {
+            import core.stdc.errno;
+            return errno();
+        }
+    }
+
+    extern (C) private pure @system @nogc nothrow
+    {
+        pragma(mangle, "fakePureErrnoImpl") ref int fakePureErrno();
+        pragma(mangle, "sprintf") int fakePureSprintf(scope char* s, scope const(char*) format, ...);
+    }
 }
 
 unittest
 {
-    import std.experimental.allocator : allocatorObject;
-    import std.experimental.allocator.building_blocks.stats_collector;
-    import std.experimental.allocator.mallocator: Mallocator;
+    import stdx.allocator : allocatorObject;
+    import stdx.allocator.building_blocks.stats_collector;
+    import stdx.allocator.mallocator: Mallocator;
     import std.conv : to;
 
     alias SCAlloc = StatsCollector!(TestAllocator, Options.bytesUsed);
 
-    SCAlloc statsCollectorAlloc;
-    {
-        auto _allocator = allocatorObject(&statsCollectorAlloc);
-        auto buf = _allocator.allocate(10);
-        _allocator.deallocate(buf);
-    }
-    auto bytesUsed = statsCollectorAlloc.bytesUsed;
-    assert(bytesUsed == 0, "Ref count leaks memory; leaked " ~ to!string(bytesUsed) ~ " bytes");
+    SCAlloc allocator;
+    auto buf = allocator.allocate(10);
+    allocator.deallocate(buf);
+    assert(allocator.bytesUsed == 0);
 }
