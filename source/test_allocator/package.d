@@ -78,6 +78,13 @@ struct TestAllocator {
 
     ~this() @safe @nogc nothrow {
         verify;
+        finalise;
+    }
+
+    private void finalise() @trusted @nogc nothrow {
+        import std.experimental.allocator: dispose;
+        deallocateAll;
+        allocator.dispose(_allocations);
     }
 
     void verify() @trusted @nogc nothrow {
@@ -92,6 +99,7 @@ struct TestAllocator {
         if(_allocations.length) {
             auto index = pureSprintf(&buffer[0], "Memory leak in TestAllocator. Allocations:\n");
             index = printAllocations(buffer, index);
+            finalise;  // avoid asan leaks
             assert(false, buffer[0 .. index]);
         }
     }
