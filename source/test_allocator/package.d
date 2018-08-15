@@ -9,10 +9,12 @@ struct TestAllocator {
 
     alias allocator = Mallocator.instance;
 
+    @safe @nogc nothrow:
+
     private static struct ByteRange {
         void* ptr;
         size_t length;
-        inout(void)[] opSlice() @trusted @nogc inout nothrow {
+        inout(void)[] opSlice() @trusted @nogc nothrow inout {
             return ptr[0 .. length];
         }
     }
@@ -22,7 +24,7 @@ struct TestAllocator {
 
     enum uint alignment = platformAlignment;
 
-    void[] allocate(size_t numBytes) @safe @nogc nothrow {
+    void[] allocate(size_t numBytes) {
         import stdx.allocator: makeArray, expandArray;
 
         ++_numAllocations;
@@ -40,7 +42,7 @@ struct TestAllocator {
         return ret;
     }
 
-    bool deallocate(void[] bytes) @trusted @nogc nothrow {
+    bool deallocate(void[] bytes) {
         import std.algorithm: remove, canFind;
         static if (__VERSION__ < 2077)
         {
@@ -54,8 +56,8 @@ struct TestAllocator {
 
         if(!_allocations.canFind!pred) {
             auto index = pureSprintf(&buffer[0],
-                                 "Unknown deallocate byte range. Ptr: %p, length: %ld, allocations:\n",
-                                 &bytes[0], bytes.length);
+                                     "Unknown deallocate byte range. Ptr: %p, length: %ld, allocations:\n",
+                                     &bytes[0], bytes.length);
             index = printAllocations(buffer, index);
             assert(false, buffer[0 .. index]);
         }
@@ -65,29 +67,29 @@ struct TestAllocator {
         return () @trusted { return allocator.deallocate(bytes); }();
     }
 
-    bool deallocateAll() @safe @nogc nothrow {
+    bool deallocateAll() {
         foreach(ref allocation; _allocations) {
             deallocate(allocation[]);
         }
         return true;
     }
 
-    auto numAllocations() @safe @nogc pure nothrow const {
+    auto numAllocations() pure const {
         return _numAllocations;
     }
 
-    ~this() @safe @nogc nothrow {
+    ~this() scope {
         verify;
         finalise;
     }
 
-    private void finalise() @trusted @nogc nothrow {
+    private void finalise() scope {
         import std.experimental.allocator: dispose;
         deallocateAll;
-        allocator.dispose(_allocations);
+        () @trusted { allocator.dispose(_allocations); }();
     }
 
-    void verify() @trusted @nogc nothrow {
+    void verify() scope {
         static if (__VERSION__ < 2077)
         {
             import core.stdc.stdio: sprintf;
@@ -104,7 +106,7 @@ struct TestAllocator {
         }
     }
 
-    int printAllocations(int N)(ref char[N] buffer, int index = 0) @trusted @nogc const nothrow {
+    int printAllocations(int N)(ref char[N] buffer, int index = 0) const {
         static if (__VERSION__ < 2077)
         {
             import core.stdc.stdio: sprintf;
@@ -124,7 +126,8 @@ struct TestAllocator {
 static if (__VERSION__ >= 2077)
 {
     /* Private bits that allow sprintf to become pure */
-    private int pureSprintf(A...)(scope char* s, scope const(char*) format, A va) @trusted pure @nogc nothrow
+    private int pureSprintf(A...)(scope char* s, scope const(char*) format, A va)
+        @trusted pure nothrow
     {
         const errnosave = fakePureErrno();
         int ret = fakePureSprintf(s, format, va);
@@ -148,8 +151,7 @@ static if (__VERSION__ >= 2077)
     }
 }
 
-unittest
-{
+@safe @nogc unittest {
     import stdx.allocator : allocatorObject;
     import stdx.allocator.building_blocks.stats_collector;
     import stdx.allocator.mallocator: Mallocator;
