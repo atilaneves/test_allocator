@@ -151,7 +151,7 @@ static if (__VERSION__ >= 2077)
     }
 }
 
-@safe @nogc unittest {
+@safe @nogc nothrow unittest {
     import stdx.allocator : allocatorObject;
     import stdx.allocator.building_blocks.stats_collector;
     import stdx.allocator.mallocator: Mallocator;
