@@ -9,5 +9,14 @@
     "targetType": "sourceLibrary",
     "dependencies": {
         "stdx-allocator": "~>2.77.0"
-    }
+    },
+    "configurations": [
+        {
+            "name": "default"
+        },
+        {
+            "name": "unittest",
+            "dflags": ["-dip25", "-dip1000"]
+        }
+    ]
 }

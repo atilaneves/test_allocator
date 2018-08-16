@@ -24,7 +24,7 @@ struct TestAllocator {
 
     enum uint alignment = platformAlignment;
 
-    void[] allocate(size_t numBytes) {
+    void[] allocate(size_t numBytes) scope {
         import stdx.allocator: makeArray, expandArray;
 
         ++_numAllocations;
@@ -42,7 +42,7 @@ struct TestAllocator {
         return ret;
     }
 
-    bool deallocate(void[] bytes) {
+    bool deallocate(void[] bytes) scope {
         import std.algorithm: remove, canFind;
         static if (__VERSION__ < 2077)
         {
@@ -67,18 +67,18 @@ struct TestAllocator {
         return () @trusted { return allocator.deallocate(bytes); }();
     }
 
-    bool deallocateAll() {
+    bool deallocateAll() scope {
         foreach(ref allocation; _allocations) {
             deallocate(allocation[]);
         }
         return true;
     }
 
-    auto numAllocations() pure const {
+    auto numAllocations() pure const scope {
         return _numAllocations;
     }
 
-    ~this() scope {
+    ~this() {
         verify;
         finalise;
     }
@@ -106,7 +106,7 @@ struct TestAllocator {
         }
     }
 
-    int printAllocations(int N)(ref char[N] buffer, int index = 0) const {
+    int printAllocations(int N)(ref char[N] buffer, int index = 0) const scope {
         static if (__VERSION__ < 2077)
         {
             import core.stdc.stdio: sprintf;
@@ -163,4 +163,10 @@ static if (__VERSION__ >= 2077)
     auto buf = allocator.allocate(10);
     allocator.deallocate(buf);
     assert(allocator.bytesUsed == 0);
+}
+
+
+@safe @nogc nothrow unittest {
+    auto obj = TestAllocator();
+    scope ptr = &obj;
 }
