@@ -6,3 +6,6 @@ __dummy.html
 __test__*__
 test_allocator-test-library
 test_allocator-test-unittest
+*.a
+*.lib
+*.dll

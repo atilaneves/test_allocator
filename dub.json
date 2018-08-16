@@ -6,7 +6,7 @@
     "description": "A test allocator",
     "copyright": "Copyright © 2016, Atila Neves",
     "license": "BSD",
-    "targetType": "sourceLibrary",
+    "targetType": "library",
     "dependencies": {
         "stdx-allocator": "~>2.77.0"
     },
