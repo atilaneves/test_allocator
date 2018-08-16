@@ -1,6 +1,10 @@
 Test Allocator
 =============
 
+[![Build Status](https://travis-ci.org/atilaneves/test_allocator.png?branch=master)](https://travis-ci.org/atilaneves/test_allocator)
+[![Coverage](https://codecov.io/gh/atilaneves/test_allocator/branch/master/graph/badge.svg)](https://codecov.io/gh/atilaneves/test_allocator)
+
+
 `std.experimental.allocator` / `std.allocator` gives D the tools to allocate
 memory as needed by the application without having to depend on the D's
 mark-and-sweep garbage collector. But... how do you know if your code
