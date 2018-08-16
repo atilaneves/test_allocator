@@ -1,0 +1,19 @@
+language: d
+sudo: false
+install:
+  - mkdir bin
+
+matrix:
+  include:
+    - d: dmd-nightly
+    - d: dmd-2.081.2
+    - d: dmd-2.080.1
+    - d: ldc-1.10.0
+  allow_failures:
+    - d: dmd-nightly
+
+script:
+  - dub test --build=unittest-cov --compiler=${DC}
+
+after_success:
+ - bash <(curl -s https://codecov.io/bash)
