@@ -54,6 +54,8 @@ struct TestAllocator {
 
         char[1024] buffer;
 
+        assert(&this !is null, "Attempting to deallocate when `this` is null");
+
         if(!_allocations.canFind!pred) {
             auto index = pureSprintf(&buffer[0],
                                      "Unknown deallocate byte range. Ptr: %p, length: %ld, allocations:\n",
