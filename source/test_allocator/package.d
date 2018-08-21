@@ -14,7 +14,7 @@ struct TestAllocator {
     private static struct ByteRange {
         void* ptr;
         size_t length;
-        inout(void)[] opSlice() @trusted @nogc nothrow inout {
+        inout(void)[] opSlice() @trusted @nogc nothrow pure inout {
             return ptr[0 .. length];
         }
     }
@@ -109,7 +109,7 @@ struct TestAllocator {
         }
     }
 
-    int printAllocations(int N)(ref char[N] buffer, int index = 0) const scope {
+    int printAllocations(int N)(ref char[N] buffer, int index = 0) pure const scope {
         static if (__VERSION__ < 2077)
         {
             import core.stdc.stdio: sprintf;
