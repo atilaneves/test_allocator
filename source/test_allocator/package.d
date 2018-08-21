@@ -59,7 +59,7 @@ struct TestAllocator {
         if(!_allocations.canFind!pred) {
             auto index = pureSprintf(&buffer[0],
                                      "Unknown deallocate byte range. Ptr: %p, length: %ld, allocations:\n",
-                                     &bytes[0], bytes.length);
+                                     () @trusted { return bytes.ptr; }(), bytes.length);
             index = printAllocations(buffer, index);
             assert(false, buffer[0 .. index]);
         }
@@ -114,10 +114,14 @@ struct TestAllocator {
             import core.stdc.stdio: sprintf;
             alias pureSprintf = sprintf;
         }
+
         index += pureSprintf(&buffer[index], "[");
-        foreach(ref allocation; _allocations) {
-            index += pureSprintf(&buffer[index], "ByteRange(%p, %ld), ",
-                             allocation.ptr, allocation.length);
+
+        if(_allocations !is null) {
+            foreach(ref allocation; _allocations) {
+                index += pureSprintf(&buffer[index], "ByteRange(%p, %ld), ",
+                                     allocation.ptr, allocation.length);
+            }
         }
 
         index += pureSprintf(&buffer[index], "]");
