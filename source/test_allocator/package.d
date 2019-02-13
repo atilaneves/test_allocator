@@ -42,7 +42,7 @@ struct TestAllocator {
         return ret;
     }
 
-    bool deallocate(void[] bytes) scope {
+    bool deallocate(void[] bytes) scope pure {
         import std.algorithm: remove, canFind;
         static if (__VERSION__ < 2077)
         {
@@ -70,7 +70,7 @@ struct TestAllocator {
         return () @trusted { return allocator.deallocate(bytes); }();
     }
 
-    bool deallocateAll() scope {
+    bool deallocateAll() scope pure {
         foreach(ref allocation; _allocations) {
             deallocate(allocation[]);
         }
@@ -81,18 +81,18 @@ struct TestAllocator {
         return _numAllocations;
     }
 
-    ~this() {
+    ~this() pure {
         verify;
         finalise;
     }
 
-    private void finalise() scope {
+    private void finalise() scope pure {
         import std.experimental.allocator: dispose;
         deallocateAll;
         () @trusted { allocator.dispose(_allocations); }();
     }
 
-    void verify() scope {
+    void verify() scope pure {
         static if (__VERSION__ < 2077)
         {
             import core.stdc.stdio: sprintf;
