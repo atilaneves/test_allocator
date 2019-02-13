@@ -52,17 +52,20 @@ struct TestAllocator {
 
         bool pred(ByteRange other) { return other.ptr == bytes.ptr && other.length == bytes.length; }
 
-        char[1024] buffer;
+        static char[1024] buffer;
 
         // @trusted because this is `scope` and we're taking the address of it
         assert(() @trusted { return &this !is null; }(), "Attempting to deallocate when `this` is null");
 
         if(!_allocations.canFind!pred) {
-            auto index = pureSprintf(&buffer[0],
-                                     "Unknown deallocate byte range. Ptr: %p, length: %ld, allocations:\n",
-                                     () @trusted { return bytes.ptr; }(), bytes.length);
-            index = printAllocations(buffer, index);
-            assert(false, buffer[0 .. index]);
+            debug {
+                auto index = pureSprintf(&buffer[0],
+                                         "Unknown deallocate byte range.\nPtr: %p, length: %ld, allocations:\n",
+                                         () @trusted { return bytes.ptr; }(), bytes.length);
+                index = printAllocations(buffer, index);
+                buffer[index .. $] = 0;
+                assert(false, buffer[0 .. index]);
+            }
         }
 
         _allocations = _allocations.remove!pred;
@@ -99,13 +102,19 @@ struct TestAllocator {
             alias pureSprintf = sprintf;
         }
 
-        char[1024] buffer;
+        static char[1024] buffer;
 
         if(_allocations.length) {
-            auto index = pureSprintf(&buffer[0], "Memory leak in TestAllocator. Allocations:\n");
-            index = printAllocations(buffer, index);
+            int index;
+            debug {
+                index = pureSprintf(&buffer[0], "Memory leak in TestAllocator. Allocations:\n");
+                index = printAllocations(buffer, index);
+                buffer[index .. $] = 0;
+            }
+
             finalise;  // avoid asan leaks
-            assert(false, buffer[0 .. index]);
+
+            debug assert(false, buffer[0 .. index]);
         }
     }
 
