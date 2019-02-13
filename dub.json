@@ -7,9 +7,6 @@
     "copyright": "Copyright © 2016, Atila Neves",
     "license": "BSD",
     "targetType": "library",
-    "dependencies": {
-        "stdx-allocator": "~>2.77.0"
-    },
     "configurations": [
         {
             "name": "default"

@@ -4,8 +4,8 @@ module test_allocator;
 // it also throws when there is an attempt to deallocate memory that wasn't
 // allocated
 struct TestAllocator {
-    import stdx.allocator.common: platformAlignment;
-    import stdx.allocator.mallocator: Mallocator;
+    import std.experimental.allocator.common: platformAlignment;
+    import std.experimental.allocator.mallocator: Mallocator;
 
     alias allocator = Mallocator.instance;
 
@@ -25,7 +25,7 @@ struct TestAllocator {
     enum uint alignment = platformAlignment;
 
     void[] allocate(size_t numBytes) scope {
-        import stdx.allocator: makeArray, expandArray;
+        import std.experimental.allocator: makeArray, expandArray;
 
         ++_numAllocations;
 
@@ -159,9 +159,9 @@ static if (__VERSION__ >= 2077)
 }
 
 @safe @nogc nothrow unittest {
-    import stdx.allocator : allocatorObject;
-    import stdx.allocator.building_blocks.stats_collector;
-    import stdx.allocator.mallocator: Mallocator;
+    import std.experimental.allocator : allocatorObject;
+    import std.experimental.allocator.building_blocks.stats_collector;
+    import std.experimental.allocator.mallocator: Mallocator;
     import std.conv : to;
 
     alias SCAlloc = StatsCollector!(TestAllocator, Options.bytesUsed);
