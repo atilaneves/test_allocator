@@ -186,3 +186,14 @@ static if (__VERSION__ >= 2077)
     auto obj = TestAllocator();
     scope ptr = &obj;
 }
+
+
+@safe @nogc unittest {
+    import std.experimental.allocator: makeArray, expandArray, dispose;
+    auto allocator = TestAllocator();
+    auto array = allocator.makeArray!int(3);
+    // expandArray is @system because Mallocator.reallocate is @system,
+    // and that in turn is because reallocate may make pointers dangle.
+    const expanded = () @trusted { return allocator.expandArray(array, 2); }();
+    allocator.dispose(array);
+}
