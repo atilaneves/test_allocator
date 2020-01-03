@@ -21,6 +21,7 @@ struct TestAllocator {
 
     private ByteRange[] _allocations;
     private int _numAllocations;
+    private char[1024] _textBuffer;
 
     enum uint alignment = platformAlignment;
 
@@ -58,14 +59,16 @@ struct TestAllocator {
         assert(() @trusted { return &this !is null; }(), "Attempting to deallocate when `this` is null");
 
         if(!_allocations.canFind!pred) {
-            debug {
-                auto index = pureSprintf(&buffer[0],
-                                         "Unknown deallocate byte range.\nPtr: %p, length: %ld, allocations:\n",
-                                         () @trusted { return bytes.ptr; }(), bytes.length);
-                index = printAllocations(buffer, index);
-                buffer[index .. $] = 0;
-                assert(false, buffer[0 .. index]);
-            }
+            auto index = pureSprintf(
+                () @trusted { return _textBuffer.ptr; }(),
+                "Cannot deallocate unknown byte range.\nPtr: %p, length: %ld, allocations:\n",
+                () @trusted { return bytes.ptr; }(), bytes.length);
+            index = printAllocations(_textBuffer, index);
+            _textBuffer[index] = 0;
+            debug
+                assert(false, _textBuffer[0 .. index].dup);
+            else
+                assert(false, "Cannot deallocate unknown byte range. Use debug mode to see more information");
         }
 
         _allocations = _allocations.remove!pred;
@@ -102,19 +105,19 @@ struct TestAllocator {
             alias pureSprintf = sprintf;
         }
 
-        static char[1024] buffer;
-
         if(_allocations.length) {
-            int index;
-            debug {
-                index = pureSprintf(&buffer[0], "Memory leak in TestAllocator. Allocations:\n");
-                index = printAllocations(buffer, index);
-                buffer[index .. $] = 0;
-            }
+            auto index = pureSprintf(
+                () @trusted { return _textBuffer.ptr; }(),
+                "Memory leak in TestAllocator. Allocations:\n");
+            index = printAllocations(_textBuffer, index);
+            _textBuffer[index] = 0;
 
             finalise;  // avoid asan leaks
 
-            debug assert(false, buffer[0 .. index]);
+            debug
+                assert(false, _textBuffer[0 .. index].dup);
+            else
+                assert(false, "Memory leak in TestAllocator. Use debug mode to see more information");
         }
     }
 
