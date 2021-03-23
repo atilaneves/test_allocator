@@ -149,18 +149,22 @@ static if (__VERSION__ >= 2077)
         @trusted pure nothrow
     {
         const errnosave = fakePureErrno();
-        int ret = fakePureSprintf(s, format, va);
+        const ret = fakePureSprintf(s, format, va);
         fakePureErrno() = errnosave;
+
         return ret;
     }
 
     extern (C) private @system @nogc nothrow
     {
-        ref int fakePureErrnoImpl()
-        {
-            import core.stdc.errno;
-            return errno();
-        }
+        version(DigitalMars) {
+            ref int fakePureErrnoImpl()
+            {
+                import core.stdc.errno;
+                return errno();
+            }
+        } else
+              ref int fakePureErrnoImpl();
     }
 
     extern (C) private pure @system @nogc nothrow
