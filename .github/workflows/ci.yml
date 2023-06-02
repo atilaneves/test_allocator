@@ -6,15 +6,20 @@ jobs:
     name: Dub Test
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        dc: [dmd-2.096.0, ldc-1.25.1]
+        os:
+          - ubuntu-20.04
+        dc:
+          - dmd-2.103.1
+          - dmd-2.096.0
+          - ldc-1.32.2
+          - ldc-1.25.1
 
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install D compiler
-        uses: dlang-community/setup-dlang@v1.0.5
+        uses: dlang-community/setup-dlang@v1.3.0
         with:
           compiler: ${{ matrix.dc }}
 
@@ -24,4 +29,4 @@ jobs:
       - name: Build binary
         run: dub build -q
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v3
