@@ -44,23 +44,22 @@ struct TestAllocator {
     }
 
     bool deallocate(void[] bytes) scope pure {
-        import std.algorithm: remove, canFind;
+        import std.algorithm: canFind, countUntil;
         static if (__VERSION__ < 2077)
         {
             import core.stdc.stdio: sprintf;
             alias pureSprintf = sprintf;
         }
 
+        // old compilers need this @trusted lambda
+        const isNull = () @trusted { return &this is null; }();
+        assert(!isNull, "Attempting to deallocate when `this` is null");
+
         bool pred(ByteRange other) { return other.ptr == bytes.ptr && other.length == bytes.length; }
-
-        static char[1024] buffer;
-
-        // @trusted because this is `scope` and we're taking the address of it
-        assert(() @trusted { return &this !is null; }(), "Attempting to deallocate when `this` is null");
 
         if(!_allocations.canFind!pred) {
             auto index = pureSprintf(
-                () @trusted { return _textBuffer.ptr; }(),
+                &_textBuffer[0],
                 "Cannot deallocate unknown byte range.\nPtr: %p, length: %ld, allocations:\n",
                 () @trusted { return bytes.ptr; }(), bytes.length);
             index = printAllocations(_textBuffer, index);
@@ -71,8 +70,14 @@ struct TestAllocator {
                 assert(false, "Cannot deallocate unknown byte range. Use debug mode to see more information");
         }
 
-        _allocations = _allocations.remove!pred;
+        // std.algorithm.remove doesn't compile with DIP1000
+        const index = _allocations.countUntil!pred;
+        foreach(i; index .. _allocations.length - 1)
+            _allocations[i] = _allocations[i + 1];
+        _allocations = _allocations[0 .. $-1];
 
+        // @trusted because we know we allocated this byte range, but
+        // not actually @safe if anyone has an alias to it.
         return () @trusted { return allocator.deallocate(bytes); }();
     }
 
@@ -107,7 +112,7 @@ struct TestAllocator {
 
         if(_allocations.length) {
             auto index = pureSprintf(
-                () @trusted { return _textBuffer.ptr; }(),
+                &_textBuffer[0],
                 "Memory leak in TestAllocator. Allocations:\n");
             index = printAllocations(_textBuffer, index);
             _textBuffer[index] = 0;
